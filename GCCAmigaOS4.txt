@@ -1,0 +1,122 @@
+= How to read this document
+
+Lines that begin with "=" are headers. Nested headers have more "="
+characters. For example:
+
+= Topic to discuss
+
+Some text about the topic.
+
+== Some related topic that warrants its own heading
+
+More text about a related topic of topic.
+
+Lines that begin with "@@@" can be considered notes or additional information
+that are not part of the flow of discussion. For example:
+
+@@@
+It is worth knowing that this function is a general GCC function that was
+removed for AmigaOS4
+@@@
+
+Underscores used like _this_ represent emphasis.
+
+Any references to source material look like "(source N)", where N is a number.
+"source N" can then literally be searched.
+
+Any references markers to other locations look like "(see [[some_text]])",
+where "[[some_text]]" can literally be searched.
+
+Any "(TODO:)"s represent the same thing as they do in code; something that needs
+to be finalised in the document.
+
+In general, the way the patches are documented look like this:
+
+someFile.c: (1) this change does this, because this. (TODO: why like that?)
+
+            (2) this other change does this because of the other.
+
+In some cases, it may merely look like a different more natural language
+version of the actual patch file, but this document attempts to both declare
+the change, in English, and reason about that change; why is it necessary for
+AmigaOS4? If there are questions to be answered, then "(TODO:)" markers ask
+questions. The actual order of the patch file does not necessarily correlate
+to the order as in the example for "someFile.c" above. It may be that (2)'s
+diff is applied before (1)'s diff.
+
+= Primer
+
+In order to understand how the compiler and linker work for AmigaOS4 it is
+probably a good start to look at the patch files that are applied to the
+compiler and linker.
+
+The source repository is `git@github.com:AmigaLabs/adtools.git'. There is a
+tool called `GILD' that basically pulls down GCC and BINUTILS from the
+official (GNU/mirrors) repositories and then automatically applies Amiga
+specific (though, the patches also contain MorphOS etc related changes)
+changes.
+
+The easiest thing to do is to look at the patches that are applied to the
+earliest versions of the components, since the earlier, the simpler. This
+document looks at GCC 4.9 and BINUTILS 2.23.2.
+
+It is worth noting that the order of the patches are purely alphabetical. It
+may be more clear to look at certain ones before others so that a coherent
+story can be made. The author has attempted to do this.
+
+= Compiler
+
+The majority of the changes are built from
+`0001-Changes-for-AmigaOS-version-of-gcc.patch'. In this patch, official files
+are changed and new ones are added. The newly added files added to the
+gcc/config directory and are the target Amiga specific files such as the
+linker script.
+
+== RS6000/Amiga changes
+
+@@@
+BUILTIN functions:
+A function that is intrinsic to the compiler and offers unique machine
+functionality (source 1).
+@@@
+
+- rs6000-builtin.def: (1) Some specific builtins are added. (TODO:)
+
+- rs6000.h: (1) Function `rs6000_va_start' is added which is used by the
+            AmigaOS port. (TODO:)
+
+- rs6000.c: (1) The rs6000_stack_t structure is modified with additional
+            entries "in the case of a TARGET_BASEREL" (from now on, known as
+            "IF BASEREL") build (TODO: Determine who, what, where defines
+            TARGET_BASEREL in the building of the toolchain). The additional
+            entries mark if the BASEREL needs to be saved, stores the offset
+            and the size of the register.
+
+	    (2) IF BASEREL the TARGET_ASM_FUNCTION_END_PROLOGUE is replaced by
+            an AmigaOS specific `amigaos_function_end_prologue()'.
+
+@@@
+GCC has the concept of "legitimizing" addresses. This may be optimizing
+addresses so that they can be used by the target CPU. Perhaps not even
+optimizing, but doing something that is _needed_. For example, an address
+might not be aligned to a particular word boundary so these functions fix that
+up. (source 2).
+@@@
+
+	    (3) In `rs6000_legitimize_address()' IF BASEREL and if the address
+            is BASEREL operand, BASEREL instruction are emitted and the
+            function exits. (see [[rs6000_legitimize_address]]) (TODO:
+            currently waiting for this part to exist) .
+
+@@@
+Function calls like `gen_elf_base_high()' will not be found in the checked-out
+repository until GCC is built. `insn-emit.c' contains these generated function
+as described in the comment at the top of `emit-rtl.c'
+@@@
+
+
+
+= Sources
+
+source 1 - https://archive.fosdem.org/2025/events/attachments/fosdem-2025-5684-tutorial-how-to-add-a-builtin-function-to-the-gcc-backend/slides/238141/fosdem-20_Fr8iceg.pdf
+source 2 - https://stffrdhrn.github.io/software/toolchain/openrisc/2020/07/21/relocs_tls_impl.html#gcc-legitimize-address
